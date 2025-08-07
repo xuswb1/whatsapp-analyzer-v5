@@ -24,37 +24,91 @@ interface ChatStats {
 
 export function parseWhatsAppChat(chatText: string): ChatStats {
   console.log('Starting chat parsing...');
+  console.log('Chat text preview:', chatText.substring(0, 500));
   
-  const lines = chatText.split('\n');
+  const lines = chatText.split('\n').filter(line => line.trim().length > 0);
+  console.log('Total lines to process:', lines.length);
+  
   const messages: Message[] = [];
   
-  // WhatsApp message regex pattern
-  const messageRegex = /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*(?:[AP]M)?\s*-\s*([^:]+):\s*(.*)$/i;
+  // Multiple regex patterns to handle different WhatsApp export formats
+  const messagePatterns = [
+    // Format: DD/MM/YYYY, HH:MM - Name: Message
+    /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*([^:]+):\s*(.*)$/,
+    
+    // Format: DD/MM/YYYY, HH:MM AM/PM - Name: Message
+    /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*([AP]M)\s*-\s*([^:]+):\s*(.*)$/,
+    
+    // Format: MM/DD/YYYY, HH:MM - Name: Message (US format)
+    /^(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*([^:]+):\s*(.*)$/,
+    
+    // Format: [DD/MM/YYYY, HH:MM:SS] Name: Message
+    /^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),?\s*(\d{1,2}:\d{2}:\d{2})\]\s*([^:]+):\s*(.*)$/,
+    
+    // Format: DD.MM.YY, HH:MM - Name: Message (German format)
+    /^(\d{1,2}\.\d{1,2}\.\d{2,4}),?\s*(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*([^:]+):\s*(.*)$/,
+    
+    // Format: DD-MM-YYYY HH:MM - Name: Message
+    /^(\d{1,2}-\d{1,2}-\d{2,4})\s+(\d{1,2}:\d{2}(?::\d{2})?)\s*-\s*([^:]+):\s*(.*)$/,
+    
+    // Format: YYYY-MM-DD HH:MM:SS - Name: Message
+    /^(\d{4}-\d{1,2}-\d{1,2})\s+(\d{1,2}:\d{2}:\d{2})\s*-\s*([^:]+):\s*(.*)$/
+  ];
   
-  for (const line of lines) {
-    const match = line.match(messageRegex);
-    if (match) {
-      const [, date, time, sender, content] = match;
-      
-      // Parse date and time
-      const [month, day, year] = date.split('/');
-      const fullYear = year.length === 2 ? `20${year}` : year;
-      const timestamp = new Date(`${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')} ${time}`);
-      
-      if (!isNaN(timestamp.getTime())) {
-        messages.push({
-          timestamp,
-          sender: sender.trim(),
-          content: content.trim()
-        });
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    let matchFound = false;
+    
+    for (const pattern of messagePatterns) {
+      const match = line.match(pattern);
+      if (match) {
+        try {
+          let date, time, sender, content, ampm = '';
+          
+          if (match.length === 5 && pattern.toString().includes('[AP]M')) {
+            // Pattern with AM/PM
+            [, date, time, ampm, sender, content] = match;
+          } else if (match.length === 5) {
+            // Standard pattern without AM/PM
+            [, date, time, sender, content] = match;
+          } else if (match.length === 6) {
+            // Pattern with AM/PM as separate group
+            [, date, time, ampm, sender, content] = match;
+          } else {
+            continue;
+          }
+          
+          const timestamp = parseDateTime(date, time, ampm);
+          
+          if (timestamp && !isNaN(timestamp.getTime())) {
+            messages.push({
+              timestamp,
+              sender: sender.trim(),
+              content: content.trim()
+            });
+            matchFound = true;
+            break;
+          }
+        } catch (error) {
+          console.log(`Error parsing line ${i + 1}: ${line}`, error);
+          continue;
+        }
       }
+    }
+    
+    if (!matchFound && i < 10) {
+      console.log(`No match for line ${i + 1}: ${line}`);
     }
   }
   
-  console.log(`Parsed ${messages.length} messages`);
+  console.log(`Parsed ${messages.length} messages from ${lines.length} lines`);
   
   if (messages.length === 0) {
-    throw new Error('No valid messages found in the chat file');
+    console.log('Sample lines for debugging:');
+    lines.slice(0, 10).forEach((line, index) => {
+      console.log(`Line ${index + 1}: ${line}`);
+    });
+    throw new Error('No valid messages found in the chat file. Please ensure this is a WhatsApp chat export file.');
   }
   
   // Analyze messages
@@ -79,25 +133,37 @@ export function parseWhatsAppChat(chatText: string): ChatStats {
     monthlyActivity[monthYear] = (monthlyActivity[monthYear] || 0) + 1;
     
     // Emoji analysis
-    const emojiRegex = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
+    const emojiRegex = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]/gu;
     const emojis = message.content.match(emojiRegex) || [];
     emojis.forEach(emoji => {
       emojiStats[emoji] = (emojiStats[emoji] || 0) + 1;
     });
     
-    // Word analysis
-    const words = message.content.toLowerCase()
-      .replace(/[^\w\s]/g, '')
-      .split(/\s+/)
-      .filter(word => word.length > 2);
+    // Word analysis - filter out common stop words and system messages
+    const systemMessages = ['message deleted', 'messages and calls are end-to-end encrypted', 'you deleted this message'];
+    const isSystemMessage = systemMessages.some(sys => message.content.toLowerCase().includes(sys));
     
-    words.forEach(word => {
-      wordStats[word] = (wordStats[word] || 0) + 1;
-    });
+    if (!isSystemMessage) {
+      const words = message.content.toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 2 && !isStopWord(word));
+      
+      words.forEach(word => {
+        wordStats[word] = (wordStats[word] || 0) + 1;
+      });
+    }
   }
   
   // Generate insights
   const insights = generateInsights(messagesByPerson, emojiStats, wordStats, participants);
+  
+  console.log('Analysis complete:', {
+    totalMessages: messages.length,
+    participants: participants.length,
+    topEmojis: Object.keys(emojiStats).length,
+    topWords: Object.keys(wordStats).length
+  });
   
   return {
     totalMessages: messages.length,
@@ -111,6 +177,84 @@ export function parseWhatsAppChat(chatText: string): ChatStats {
     },
     insights
   };
+}
+
+function parseDateTime(dateStr: string, timeStr: string, ampm: string = ''): Date | null {
+  try {
+    let parsedDate: Date | null = null;
+    
+    // Handle different date formats
+    if (dateStr.includes('/')) {
+      // MM/DD/YYYY or DD/MM/YYYY format
+      const [part1, part2, part3] = dateStr.split('/');
+      const year = part3.length === 2 ? `20${part3}` : part3;
+      
+      // Try both DD/MM/YYYY and MM/DD/YYYY
+      const date1 = new Date(`${year}-${part2.padStart(2, '0')}-${part1.padStart(2, '0')}`);
+      const date2 = new Date(`${year}-${part1.padStart(2, '0')}-${part2.padStart(2, '0')}`);
+      
+      // Use the date that makes more sense (day <= 12 could be either format)
+      if (!isNaN(date1.getTime()) && (parseInt(part1) <= 12 || parseInt(part2) > 12)) {
+        parsedDate = date1;
+      } else if (!isNaN(date2.getTime())) {
+        parsedDate = date2;
+      } else {
+        parsedDate = date1; // Default to first format
+      }
+    } else if (dateStr.includes('.')) {
+      // DD.MM.YYYY format (German)
+      const [day, month, year] = dateStr.split('.');
+      const fullYear = year.length === 2 ? `20${year}` : year;
+      parsedDate = new Date(`${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+    } else if (dateStr.includes('-')) {
+      // DD-MM-YYYY or YYYY-MM-DD format
+      const parts = dateStr.split('-');
+      if (parts[0].length === 4) {
+        // YYYY-MM-DD format
+        parsedDate = new Date(dateStr);
+      } else {
+        // DD-MM-YYYY format
+        const [day, month, year] = parts;
+        const fullYear = year.length === 2 ? `20${year}` : year;
+        parsedDate = new Date(`${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+      }
+    }
+    
+    if (!parsedDate || isNaN(parsedDate.getTime())) {
+      return null;
+    }
+    
+    // Parse time
+    let [hours, minutes, seconds = '0'] = timeStr.split(':');
+    let hourNum = parseInt(hours);
+    
+    // Handle AM/PM
+    if (ampm.toLowerCase() === 'pm' && hourNum !== 12) {
+      hourNum += 12;
+    } else if (ampm.toLowerCase() === 'am' && hourNum === 12) {
+      hourNum = 0;
+    }
+    
+    parsedDate.setHours(hourNum, parseInt(minutes), parseInt(seconds));
+    
+    return parsedDate;
+  } catch (error) {
+    console.log('Error parsing date/time:', { dateStr, timeStr, ampm }, error);
+    return null;
+  }
+}
+
+function isStopWord(word: string): boolean {
+  const stopWords = [
+    'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+    'this', 'that', 'these', 'those', 'is', 'are', 'was', 'were', 'be', 'been',
+    'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could',
+    'can', 'may', 'might', 'must', 'shall', 'not', 'no', 'yes', 'all', 'any',
+    'some', 'few', 'more', 'most', 'other', 'another', 'such', 'what', 'which',
+    'who', 'when', 'where', 'why', 'how', 'get', 'got', 'see', 'saw', 'come',
+    'came', 'take', 'took', 'give', 'gave', 'make', 'made', 'know', 'knew'
+  ];
+  return stopWords.includes(word.toLowerCase());
 }
 
 function generateInsights(
@@ -127,39 +271,70 @@ function generateInsights(
   
   // Assign roles
   if (sortedParticipants.length >= 2) {
-    roles[sortedParticipants[0]] = "Chat Champion 🏆";
-    
     const topParticipant = sortedParticipants[0];
     const secondParticipant = sortedParticipants[1];
+    
+    roles[topParticipant] = "Chat Champion 🏆";
     
     if (messagesByPerson[topParticipant] > messagesByPerson[secondParticipant] * 2) {
       roles[topParticipant] = "Double Texter 💬";
     }
+    
+    // Assign roles to other participants
+    if (sortedParticipants.length > 2) {
+      const totalMessages = Object.values(messagesByPerson).reduce((sum, count) => sum + count, 0);
+      
+      for (let i = 1; i < Math.min(sortedParticipants.length, 5); i++) {
+        const participant = sortedParticipants[i];
+        const messageCount = messagesByPerson[participant];
+        const percentage = messageCount / totalMessages;
+        
+        if (percentage < 0.05) {
+          roles[participant] = "Lurker 👻";
+        } else if (percentage > 0.3) {
+          roles[participant] = "Chatty One 🗣️";
+        } else {
+          roles[participant] = "Squad Member ✨";
+        }
+      }
+    }
   }
   
-  // Find emoji overuser
-  const topEmojiUser = Object.keys(emojiStats).reduce((a, b) => emojiStats[a] > emojiStats[b] ? a : b, '');
+  // Generate dynamics
+  const totalMessages = Object.values(messagesByPerson).reduce((sum, count) => sum + count, 0);
+  
   if (Object.keys(emojiStats).length > 0) {
-    dynamics.push(`${topEmojiUser} is the top emoji!`);
+    const topEmoji = Object.entries(emojiStats).sort(([,a], [,b]) => b - a)[0];
+    dynamics.push(`${topEmoji[0]} is the most loved emoji with ${topEmoji[1]} uses!`);
   }
   
-  // Find common words
-  const commonWords = ['haha', 'lol', 'sorry', 'okay', 'yeah', 'omg'];
-  const foundWords = commonWords.filter(word => wordStats[word] > 5);
-  if (foundWords.length > 0) {
-    dynamics.push(`Most used casual words: ${foundWords.join(', ')}`);
+  // Find common casual words
+  const casualWords = ['haha', 'lol', 'lmao', 'omg', 'wow', 'yeah', 'yep', 'nah', 'tbh', 'btw'];
+  const foundCasualWords = casualWords.filter(word => wordStats[word] && wordStats[word] > 3);
+  if (foundCasualWords.length > 0) {
+    dynamics.push(`Most used casual expressions: ${foundCasualWords.slice(0, 3).join(', ')}`);
+  }
+  
+  // Check for active vs quiet periods
+  if (participants.length > 1) {
+    const avgMessagesPerPerson = totalMessages / participants.length;
+    const activeParticipants = participants.filter(p => messagesByPerson[p] > avgMessagesPerPerson);
+    if (activeParticipants.length === 1) {
+      dynamics.push(`${activeParticipants[0]} carries most conversations`);
+    }
   }
   
   // Top emojis
   const topEmojis = Object.entries(emojiStats)
     .sort(([,a], [,b]) => b - a)
-    .slice(0, 5)
+    .slice(0, 10)
     .map(([emoji, count]) => ({ emoji, count }));
   
-  // Top words
+  // Top words - filter out very common words
   const topWords = Object.entries(wordStats)
+    .filter(([word, count]) => count > 2 && word.length > 3)
     .sort(([,a], [,b]) => b - a)
-    .slice(0, 10)
+    .slice(0, 15)
     .map(([word, count]) => ({ word, count }));
   
   return {
