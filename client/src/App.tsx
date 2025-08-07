@@ -1,14 +1,20 @@
 import * as React from 'react';
-import { Button } from '@/components/ui/button';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { HomePage } from './pages/HomePage';
+import { UploadPage } from './pages/UploadPage';
+import { ResultsPage } from './pages/ResultsPage';
 
-// Extract the error message
 function App() {
   return (
-    <div className="min-h-screen">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold">Instance starter</h1>
+    <Router>
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-teal-50">
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/upload" element={<UploadPage />} />
+          <Route path="/results/:sessionId" element={<ResultsPage />} />
+        </Routes>
       </div>
-    </div>
+    </Router>
   );
 }
 
