@@ -179,6 +179,83 @@ export function parseWhatsAppChat(chatText: string): ChatStats {
   };
 }
 
+export function mergeChatAnalyses(analyses: ChatStats[]): ChatStats {
+  console.log(`Merging ${analyses.length} chat analyses`);
+  
+  const merged: ChatStats = {
+    totalMessages: 0,
+    participants: [],
+    messagesByPerson: {},
+    emojiStats: {},
+    wordStats: {},
+    timeStats: {
+      hourlyActivity: {},
+      monthlyActivity: {}
+    },
+    insights: {
+      roles: {},
+      dynamics: [],
+      topEmojis: [],
+      topWords: []
+    }
+  };
+  
+  // Merge all data
+  for (const analysis of analyses) {
+    merged.totalMessages += analysis.totalMessages;
+    
+    // Merge participants
+    analysis.participants.forEach(p => {
+      if (!merged.participants.includes(p)) {
+        merged.participants.push(p);
+      }
+    });
+    
+    // Merge message stats
+    Object.entries(analysis.messagesByPerson).forEach(([person, count]) => {
+      merged.messagesByPerson[person] = (merged.messagesByPerson[person] || 0) + count;
+    });
+    
+    // Merge emoji stats
+    Object.entries(analysis.emojiStats).forEach(([emoji, count]) => {
+      merged.emojiStats[emoji] = (merged.emojiStats[emoji] || 0) + count;
+    });
+    
+    // Merge word stats
+    Object.entries(analysis.wordStats).forEach(([word, count]) => {
+      merged.wordStats[word] = (merged.wordStats[word] || 0) + count;
+    });
+    
+    // Merge time stats
+    Object.entries(analysis.timeStats.hourlyActivity).forEach(([hour, count]) => {
+      merged.timeStats.hourlyActivity[hour] = (merged.timeStats.hourlyActivity[hour] || 0) + count;
+    });
+    
+    Object.entries(analysis.timeStats.monthlyActivity).forEach(([month, count]) => {
+      merged.timeStats.monthlyActivity[month] = (merged.timeStats.monthlyActivity[month] || 0) + count;
+    });
+  }
+  
+  // Generate merged insights
+  merged.insights = generateInsights(
+    merged.messagesByPerson, 
+    merged.emojiStats, 
+    merged.wordStats, 
+    merged.participants
+  );
+  
+  // Add multi-file specific dynamics
+  merged.insights.dynamics.unshift(`Combined data from ${analyses.length} chat exports! 📊`);
+  
+  console.log('Merge complete:', {
+    totalMessages: merged.totalMessages,
+    participants: merged.participants.length,
+    fileCount: analyses.length
+  });
+  
+  return merged;
+}
+
 function parseDateTime(dateStr: string, timeStr: string, ampm: string = ''): Date | null {
   try {
     let parsedDate: Date | null = null;

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Download, Share2 } from 'lucide-react';
 import { StatsOverview } from '@/components/results/StatsOverview';
+import { CompactStatsOverview } from '@/components/results/CompactStatsOverview';
 import { EmojiAnalysis } from '@/components/results/EmojiAnalysis';
 import { TimeAnalysis } from '@/components/results/TimeAnalysis';
 import { ParticipantRoles } from '@/components/results/ParticipantRoles';
@@ -25,6 +26,8 @@ interface ChatAnalysis {
     dynamics: string[];
     topEmojis: Array<{ emoji: string; count: number }>;
     topWords: Array<{ word: string; count: number }>;
+    isMultiFile?: boolean;
+    fileCount?: number;
   };
   createdAt: string;
 }
@@ -64,7 +67,7 @@ export function ResultsPage() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-200 border-t-purple-600 mx-auto mb-4"></div>
-          <p className="text-lg">Loading your Chat Rewind...</p>
+          <p className="text-lg text-gray-800">Loading your Chat Rewind...</p>
         </div>
       </div>
     );
@@ -74,8 +77,8 @@ export function ResultsPage() {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <Card className="text-center p-8">
-          <h2 className="text-2xl font-bold mb-4">Oops! 😅</h2>
-          <p className="text-gray-600 mb-6">{error || 'Analysis not found'}</p>
+          <h2 className="text-2xl font-bold mb-4 text-gray-800">Oops! 😅</h2>
+          <p className="text-gray-700 mb-6">{error || 'Analysis not found'}</p>
           <Link to="/upload">
             <Button className="bg-gradient-to-r from-purple-600 to-teal-600">
               Try Another Chat
@@ -85,6 +88,9 @@ export function ResultsPage() {
       </div>
     );
   }
+
+  const isMultiFile = analysis.insights.isMultiFile;
+  const StatsComponent = isMultiFile ? CompactStatsOverview : StatsOverview;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -96,11 +102,11 @@ export function ResultsPage() {
         </Link>
         
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="text-gray-700 border-gray-300">
             <Download className="h-4 w-4 mr-2" />
             Export PDF
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className="text-gray-700 border-gray-300">
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>
@@ -108,27 +114,51 @@ export function ResultsPage() {
       </div>
 
       {/* Title */}
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-teal-600 bg-clip-text text-transparent mb-4">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 to-teal-600 bg-clip-text text-transparent mb-4">
           Your Chat Rewind 2024 ✨
         </h1>
-        <p className="text-lg text-gray-600">
-          Here's your year in {analysis.fileName.replace('.zip', '')} 📱
+        <p className="text-base md:text-lg text-gray-700">
+          {isMultiFile 
+            ? `Combined analysis from ${analysis.insights.fileCount} chat files 📊` 
+            : `Here's your year in ${analysis.fileName.replace('.zip', '')} 📱`
+          }
         </p>
+        {isMultiFile && (
+          <p className="text-sm text-gray-600 mt-1">
+            Files: {analysis.fileName}
+          </p>
+        )}
       </div>
 
       {/* Analysis Sections */}
-      <div className="space-y-8">
-        <StatsOverview analysis={analysis} />
-        <EmojiAnalysis analysis={analysis} />
-        <ParticipantRoles analysis={analysis} />
-        <WordCloud analysis={analysis} />
-        <TimeAnalysis analysis={analysis} />
+      <div className={`space-y-${isMultiFile ? '6' : '8'}`}>
+        <StatsComponent analysis={analysis} />
+        
+        {/* Compact layout for multi-file */}
+        {isMultiFile ? (
+          <>
+            <div className="grid md:grid-cols-2 gap-6">
+              <EmojiAnalysis analysis={analysis} />
+              <WordCloud analysis={analysis} />
+            </div>
+            
+            <ParticipantRoles analysis={analysis} />
+            <TimeAnalysis analysis={analysis} />
+          </>
+        ) : (
+          <>
+            <EmojiAnalysis analysis={analysis} />
+            <ParticipantRoles analysis={analysis} />
+            <WordCloud analysis={analysis} />
+            <TimeAnalysis analysis={analysis} />
+          </>
+        )}
       </div>
 
       {/* Footer */}
-      <div className="text-center mt-12 p-8 bg-gradient-to-r from-purple-50 to-teal-50 rounded-xl">
-        <h3 className="text-xl font-bold mb-4">Want to analyze another chat? 🤔</h3>
+      <div className="text-center mt-12 p-6 bg-white border border-purple-200 rounded-xl">
+        <h3 className="text-lg md:text-xl font-bold mb-4 text-gray-800">Want to analyze another chat? 🤔</h3>
         <Link to="/upload">
           <Button className="bg-gradient-to-r from-purple-600 to-teal-600 hover:from-purple-700 hover:to-teal-700">
             Upload Another Chat

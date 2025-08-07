@@ -31,41 +31,41 @@ export function ParticipantRoles({ analysis }: ParticipantRolesProps) {
   };
 
   return (
-    <Card className="border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-purple-50">
-      <CardHeader className="text-center">
-        <CardTitle className="text-2xl flex items-center justify-center gap-2">
-          <Users className="h-6 w-6 text-indigo-600" />
+    <Card className="bg-white border border-indigo-200">
+      <CardHeader className="text-center pb-4">
+        <CardTitle className="text-xl flex items-center justify-center gap-2 text-gray-800">
+          <Users className="h-5 w-5 text-indigo-600" />
           Squad Roles & Rankings
         </CardTitle>
-        <p className="text-gray-600">Who's who in your chat universe</p>
+        <p className="text-gray-700 text-sm">Who's who in your chat universe</p>
       </CardHeader>
       
       <CardContent>
         {/* Leaderboard */}
-        <div className="space-y-4 mb-6">
+        <div className="space-y-3 mb-6">
           {sortedParticipants.map((participant, index) => {
             const messageCount = messageStats[participant];
             const percentage = Math.round((messageCount / totalMessages) * 100);
             const role = insights.roles[participant] || getDefaultRole(participant, index);
             
             return (
-              <div key={participant} className="p-4 bg-white rounded-lg shadow-sm">
+              <div key={participant} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-3">
-                    {index === 0 && <Crown className="h-5 w-5 text-yellow-500" />}
-                    <span className="font-semibold text-lg">{participant}</span>
+                  <div className="flex items-center gap-2">
+                    {index === 0 && <Crown className="h-4 w-4 text-yellow-500" />}
+                    <span className="font-semibold text-sm text-gray-800">{participant}</span>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-lg">{messageCount.toLocaleString()}</div>
-                    <div className="text-sm text-gray-500">{percentage}% of chat</div>
+                    <div className="font-bold text-sm text-gray-800">{messageCount.toLocaleString()}</div>
+                    <div className="text-xs text-gray-600">{percentage}%</div>
                   </div>
                 </div>
                 
                 {/* Progress Bar */}
                 <div className="mb-2">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
                     <div 
-                      className={`h-2 rounded-full ${
+                      className={`h-1.5 rounded-full ${
                         index === 0 ? 'bg-yellow-500' :
                         index === 1 ? 'bg-purple-500' :
                         index === 2 ? 'bg-blue-500' :
@@ -76,7 +76,7 @@ export function ParticipantRoles({ analysis }: ParticipantRolesProps) {
                   </div>
                 </div>
                 
-                <div className="text-sm font-medium text-indigo-600">{role}</div>
+                <div className="text-xs font-medium text-indigo-600">{role}</div>
               </div>
             );
           })}
@@ -84,13 +84,13 @@ export function ParticipantRoles({ analysis }: ParticipantRolesProps) {
 
         {/* Chat Dynamics */}
         {insights.dynamics.length > 0 && (
-          <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg">
-            <h4 className="font-semibold mb-3 flex items-center gap-2">
+          <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <h4 className="font-semibold mb-2 flex items-center gap-2 text-gray-800">
               <MessageSquare className="h-4 w-4" />
               Chat Dynamics
             </h4>
-            <ul className="space-y-2 text-sm">
-              {insights.dynamics.map((dynamic, index) => (
+            <ul className="space-y-1 text-xs text-gray-700">
+              {insights.dynamics.slice(0, 4).map((dynamic, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <span className="text-blue-500">•</span>
                   <span>{dynamic}</span>
@@ -101,16 +101,16 @@ export function ParticipantRoles({ analysis }: ParticipantRolesProps) {
         )}
 
         {/* Fun Stats */}
-        <div className="mt-6 grid md:grid-cols-2 gap-4">
-          <div className="p-3 bg-green-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-green-700">{participants.length}</div>
-            <div className="text-sm text-green-600">Total Participants</div>
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="p-2 bg-green-50 rounded border border-green-200 text-center">
+            <div className="text-lg font-bold text-green-700">{participants.length}</div>
+            <div className="text-xs text-green-600">Participants</div>
           </div>
-          <div className="p-3 bg-orange-50 rounded-lg text-center">
-            <div className="text-2xl font-bold text-orange-700">
+          <div className="p-2 bg-orange-50 rounded border border-orange-200 text-center">
+            <div className="text-lg font-bold text-orange-700">
               {Math.round(totalMessages / participants.length)}
             </div>
-            <div className="text-sm text-orange-600">Avg Messages/Person</div>
+            <div className="text-xs text-orange-600">Avg/Person</div>
           </div>
         </div>
       </CardContent>

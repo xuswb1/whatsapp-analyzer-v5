@@ -54,51 +54,51 @@ export function TimeAnalysis({ analysis }: TimeAnalysisProps) {
   return (
     <div className="grid lg:grid-cols-2 gap-6">
       {/* Hourly Activity */}
-      <Card className="border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-indigo-50">
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl flex items-center justify-center gap-2">
-            <Clock className="h-5 w-5 text-blue-600" />
+      <Card className="bg-white border border-blue-200">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-lg flex items-center justify-center gap-2 text-gray-800">
+            <Clock className="h-4 w-4 text-blue-600" />
             Daily Activity Pattern
           </CardTitle>
         </CardHeader>
         
         <CardContent>
-          <div className="h-64 mb-6">
+          <div className="h-48 mb-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={hourlyData}>
                 <XAxis 
                   dataKey="hour" 
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 10, fill: '#374151' }}
                   interval="preserveStartEnd"
                 />
-                <YAxis tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 10, fill: '#374151' }} />
                 <Bar 
                   dataKey="messages" 
                   fill="#3B82F6"
-                  radius={[2, 2, 0, 0]}
+                  radius={[1, 1, 0, 0]}
                 />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           <div className="space-y-3">
-            <div className="p-3 bg-white rounded-lg shadow-sm">
-              <div className="font-semibold text-blue-700">🌟 Peak Activity</div>
-              <div className="text-sm">
+            <div className="p-2 bg-gray-50 rounded border border-gray-200">
+              <div className="font-semibold text-blue-700 text-sm">🌟 Peak Activity</div>
+              <div className="text-xs text-gray-700">
                 {peakHour.hour} - {peakHour.messages} messages
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <div className="p-2 bg-yellow-50 rounded text-center">
-                <div className="font-medium">Morning (6-12)</div>
-                <div className="text-xs">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 bg-yellow-50 rounded text-center border border-yellow-200">
+                <div className="font-medium text-gray-800">Morning</div>
+                <div className="text-xs text-gray-600">
                   {getActivityLevel(9)}
                 </div>
               </div>
-              <div className="p-2 bg-orange-50 rounded text-center">
-                <div className="font-medium">Evening (18-24)</div>
-                <div className="text-xs">
+              <div className="p-2 bg-orange-50 rounded text-center border border-orange-200">
+                <div className="font-medium text-gray-800">Evening</div>
+                <div className="text-xs text-gray-600">
                   {getActivityLevel(21)}
                 </div>
               </div>
@@ -108,48 +108,47 @@ export function TimeAnalysis({ analysis }: TimeAnalysisProps) {
       </Card>
 
       {/* Monthly Activity */}
-      <Card className="border-2 border-purple-200 bg-gradient-to-br from-purple-50 to-pink-50">
-        <CardHeader className="text-center">
-          <CardTitle className="text-xl flex items-center justify-center gap-2">
-            <Calendar className="h-5 w-5 text-purple-600" />
+      <Card className="bg-white border border-purple-200">
+        <CardHeader className="text-center pb-4">
+          <CardTitle className="text-lg flex items-center justify-center gap-2 text-gray-800">
+            <Calendar className="h-4 w-4 text-purple-600" />
             Monthly Chat Trends
           </CardTitle>
         </CardHeader>
         
         <CardContent>
-          <div className="h-64 mb-6">
+          <div className="h-48 mb-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={monthlyData}>
                 <XAxis 
                   dataKey="month" 
-                  tick={{ fontSize: 12 }}
+                  tick={{ fontSize: 10, fill: '#374151' }}
                 />
-                <YAxis tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 10, fill: '#374151' }} />
                 <Line 
                   type="monotone" 
                   dataKey="messages" 
                   stroke="#9333EA" 
-                  strokeWidth={3}
-                  dot={{ fill: '#9333EA', strokeWidth: 2 }}
+                  strokeWidth={2}
+                  dot={{ fill: '#9333EA', strokeWidth: 1, r: 3 }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
 
           <div className="space-y-3">
-            <div className="p-3 bg-white rounded-lg shadow-sm">
-              <div className="font-semibold text-purple-700">📅 Peak Month</div>
-              <div className="text-sm">
+            <div className="p-2 bg-gray-50 rounded border border-gray-200">
+              <div className="font-semibold text-purple-700 text-sm">📅 Peak Month</div>
+              <div className="text-xs text-gray-700">
                 {peakMonth.month} - {peakMonth.messages} messages
               </div>
             </div>
 
-            <div className="p-3 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg">
-              <div className="font-semibold mb-2">📊 Chat Timeline:</div>
-              <ul className="text-sm space-y-1">
-                <li>• Most active month: <strong>{peakMonth.month}</strong></li>
-                <li>• Total active months: <strong>{monthlyData.length}</strong></li>
-                <li>• Your chat journey spans across the year! 🗓️</li>
+            <div className="p-2 bg-gray-50 rounded border border-gray-200">
+              <div className="font-semibold mb-1 text-gray-800 text-sm">📊 Timeline:</div>
+              <ul className="text-xs text-gray-700 space-y-1">
+                <li>• Most active: <strong>{peakMonth.month}</strong></li>
+                <li>• Active months: <strong>{monthlyData.length}</strong></li>
               </ul>
             </div>
           </div>

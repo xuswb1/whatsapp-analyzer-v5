@@ -4,30 +4,53 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Upload, FileText, ArrowLeft } from 'lucide-react';
+import { Upload, FileText, ArrowLeft, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export function UploadPage() {
   const navigate = useNavigate();
-  const [file, setFile] = React.useState<File | null>(null);
+  const [files, setFiles] = React.useState<FileList | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
   const [uploadProgress, setUploadProgress] = React.useState(0);
   const [error, setError] = React.useState<string | null>(null);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = event.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.type === 'application/zip' || selectedFile.name.endsWith('.zip')) {
-        setFile(selectedFile);
-        setError(null);
-      } else {
-        setError('Please select a ZIP file');
+    const selectedFiles = event.target.files;
+    if (selectedFiles && selectedFiles.length > 0) {
+      // Check if all files are ZIP files
+      const invalidFiles = Array.from(selectedFiles).filter(
+        file => !file.type.includes('zip') && !file.name.endsWith('.zip')
+      );
+      
+      if (invalidFiles.length > 0) {
+        setError(`Please select only ZIP files. Invalid files: ${invalidFiles.map(f => f.name).join(', ')}`);
+        return;
       }
+      
+      if (selectedFiles.length > 10) {
+        setError('Maximum 10 files allowed');
+        return;
+      }
+      
+      setFiles(selectedFiles);
+      setError(null);
     }
   };
 
+  const removeFile = (indexToRemove: number) => {
+    if (!files) return;
+    
+    const fileArray = Array.from(files);
+    fileArray.splice(indexToRemove, 1);
+    
+    // Create new FileList
+    const dt = new DataTransfer();
+    fileArray.forEach(file => dt.items.add(file));
+    setFiles(dt.files.length > 0 ? dt.files : null);
+  };
+
   const handleUpload = async () => {
-    if (!file) return;
+    if (!files || files.length === 0) return;
 
     setIsUploading(true);
     setUploadProgress(0);
@@ -35,7 +58,9 @@ export function UploadPage() {
 
     try {
       const formData = new FormData();
-      formData.append('chatFile', file);
+      Array.from(files).forEach(file => {
+        formData.append('chatFiles', file);
+      });
 
       const response = await fetch('/api/upload-chat', {
         method: 'POST',
@@ -66,10 +91,12 @@ export function UploadPage() {
     if (isUploading && uploadProgress < 90) {
       const timer = setInterval(() => {
         setUploadProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
+      }, 300);
       return () => clearInterval(timer);
     }
   }, [isUploading, uploadProgress]);
+
+  const totalSize = files ? Array.from(files).reduce((sum, file) => sum + file.size, 0) : 0;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -82,9 +109,9 @@ export function UploadPage() {
 
       <Card className="border-2 border-dashed border-purple-200 hover:border-purple-400 transition-colors">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl flex items-center justify-center gap-2">
+          <CardTitle className="text-2xl flex items-center justify-center gap-2 text-gray-800">
             <Upload className="h-6 w-6 text-purple-600" />
-            Upload Your WhatsApp Chat
+            Upload Your WhatsApp Chats
           </CardTitle>
         </CardHeader>
         
@@ -97,9 +124,9 @@ export function UploadPage() {
                 </div>
                 
                 <div>
-                  <p className="text-lg font-medium mb-2">Select your exported WhatsApp chat ZIP file</p>
-                  <p className="text-sm text-gray-600">
-                    Make sure it's the ZIP file exported from WhatsApp containing your chat history
+                  <p className="text-lg font-medium mb-2 text-gray-800">Select your exported WhatsApp chat ZIP files</p>
+                  <p className="text-sm text-gray-700">
+                    You can upload multiple ZIP files (max 10). If they're from the same person, we'll merge them for a comprehensive analysis.
                   </p>
                 </div>
               </div>
@@ -108,15 +135,40 @@ export function UploadPage() {
                 <Input
                   type="file"
                   accept=".zip"
+                  multiple
                   onChange={handleFileSelect}
                   className="cursor-pointer"
                 />
 
-                {file && (
-                  <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
-                    <p className="text-sm font-medium text-green-800">
-                      📁 {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
-                    </p>
+                {files && files.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
+                      <p className="text-sm font-medium text-green-800 mb-2">
+                        📁 {files.length} file{files.length > 1 ? 's' : ''} selected ({(totalSize / 1024 / 1024).toFixed(2)} MB total)
+                      </p>
+                    </div>
+                    
+                    <div className="max-h-40 overflow-y-auto space-y-2">
+                      {Array.from(files).map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded border text-gray-800">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <FileText className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                            <span className="text-sm truncate">{file.name}</span>
+                            <span className="text-xs text-gray-500 flex-shrink-0">
+                              ({(file.size / 1024 / 1024).toFixed(1)} MB)
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="p-1 h-6 w-6 hover:bg-red-100"
+                          >
+                            <X className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -128,11 +180,11 @@ export function UploadPage() {
 
                 <Button 
                   onClick={handleUpload}
-                  disabled={!file || isUploading}
+                  disabled={!files || files.length === 0 || isUploading}
                   className="w-full bg-gradient-to-r from-purple-600 to-teal-600 hover:from-purple-700 hover:to-teal-700"
                   size="lg"
                 >
-                  {isUploading ? 'Analyzing Your Chat...' : 'Start Analysis 🚀'}
+                  {isUploading ? 'Analyzing Your Chat...' : `Start Analysis 🚀${files && files.length > 1 ? ` (${files.length} files)` : ''}`}
                 </Button>
               </div>
             </>
@@ -143,13 +195,16 @@ export function UploadPage() {
               </div>
               
               <div>
-                <p className="text-lg font-medium mb-4">Analyzing your chat...</p>
+                <p className="text-lg font-medium mb-4 text-gray-800">
+                  Analyzing your chat{files && files.length > 1 ? 's' : ''}...
+                </p>
                 <Progress value={uploadProgress} className="w-full" />
-                <p className="text-sm text-gray-600 mt-2">{uploadProgress}% complete</p>
+                <p className="text-sm text-gray-700 mt-2">{uploadProgress}% complete</p>
               </div>
               
-              <div className="text-sm text-gray-600 space-y-1">
+              <div className="text-sm text-gray-700 space-y-1">
                 <p>🔍 Parsing messages...</p>
+                {files && files.length > 1 && <p>🔗 Merging chat data...</p>}
                 <p>📊 Analyzing patterns...</p>
                 <p>🎉 Generating insights...</p>
               </div>
@@ -157,12 +212,13 @@ export function UploadPage() {
           )}
 
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-2">How to export your WhatsApp chat:</h3>
-            <ol className="text-sm text-gray-600 space-y-1 list-decimal list-inside">
+            <h3 className="font-medium mb-2 text-gray-800">How to export your WhatsApp chat:</h3>
+            <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
               <li>Open WhatsApp and go to the chat you want to analyze</li>
               <li>Tap the chat name at the top → Export Chat</li>
               <li>Choose "Without Media" and save as ZIP file</li>
-              <li>Upload the ZIP file here</li>
+              <li>Upload the ZIP file(s) here</li>
+              <li>For multiple chats from the same person, upload all ZIP files together</li>
             </ol>
           </div>
         </CardContent>
